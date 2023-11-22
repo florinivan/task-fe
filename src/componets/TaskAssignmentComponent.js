@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axiosInstance from './axiosInstance';
 import axios from 'axios';
 import styles from './styles.module.css';
+import moment from 'moment';
 
 const TaskAssignmentComponent = () => {
   const [tasks, setTasks] = useState([]);
@@ -52,7 +53,6 @@ const TaskAssignmentComponent = () => {
           "accept": "application/json",
           "Access-Control-Allow-Origin": "*"
         },
-        credentials: 'include',
         body: JSON.stringify({ assignee: selectedEmployee })
     };
     const response = await fetch(`http://localhost:8080/api/tasks/update/${taskId}`, requestOptions)
@@ -76,10 +76,26 @@ const TaskAssignmentComponent = () => {
   };
   const response = await fetch(`http://localhost:8080/api/tasks/update/${taskId}`, requestOptions)
       .then(response => response.json())
-      .then(data => setEmployees(data))
+      .then(data => data)
       .catch(error => console.error(error));
     // Refresh tasks after unassigning
     fetchTasks();
+  };
+
+  const handleDueDate= async (e, taskId) => {
+    const newDate = moment(new Date(e.target.value)).format('YYYY-MM-DD');
+    const requestOptions = {
+      method: 'POST',
+      headers: {
+        "accept": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      },
+      body: JSON.stringify({ dueDate: newDate })
+  };
+  const response = await fetch(`http://localhost:8080/api/tasks/update/${taskId}`, requestOptions)
+    .then(response => response.json())
+    .then(data => data)
+    .catch(error => console.error(error));
   };
 
   return (
@@ -89,7 +105,7 @@ const TaskAssignmentComponent = () => {
         {tasks.map((task) => (
           <div key={task.id} className={styles.taskRow}>
             <section id="description">Titel: {task.description}</section>
-            <section id="dueDate">Due Date: <input id="dueDate" type="date" name="dueDate" defaultValue={task.dueDate} /></section>
+            <section id="dueDate">Due Date: <input id="dueDate" type="date" name="dueDate" defaultValue={task.dueDate} onChange={(e) => handleDueDate(e,task.id)}/></section>
             <section id="assigned">Assigned to: {task.assignee?.name || 'Unassigned'}</section>
             {task.assignee ? (
               <button onClick={() => handleUnassignTask(task.id)}>Unassign</button>
