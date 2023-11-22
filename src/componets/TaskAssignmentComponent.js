@@ -1,80 +1,115 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from './axiosInstance';
 import axios from 'axios';
+import styles from './styles.module.css';
 
 const TaskAssignmentComponent = () => {
   const [tasks, setTasks] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
-  const [selectedEmployee, setSelectedEmployee] = useState('');
+  const [selectedEmployee, setSelectedEmployee] = useState(0);
+  // Fetch tasks and employees from the server
+  const fetchTasks = async () => {
+    fetch('http://localhost:8080/api/tasks', {
+      method: "GET",
+      headers: {
+          "accept": "application/json",
+          "Access-Control-Allow-Origin": "*"
+      }
+    })
+      .then(response => response.json())
+      .then(data => setTasks(data))
+      .catch(error => console.error(error));
+  };
+
+  const fetchEmployees = async () => {
+    fetch('http://localhost:8080/api/employees', {
+      method: "GET",
+      headers: {
+          "accept": "application/json",
+          "Access-Control-Allow-Origin": "*"
+      }
+    })
+      .then(response => response.json())
+      .then(data => setEmployees(data))
+      .catch(error => console.error(error));
+  };
 
   useEffect(() => {
-    // Fetch tasks and employees from the server
-    const fetchTasks = async () => {
-      try {
-        const tasksResponse = await axiosInstance.get('/tasks');
-        setTasks(tasksResponse.data);
-      } catch (err) {
-        console.log('Login Err ', err);
-      }
-    };
-
-    const fetchEmployees = async () => {
-      const employeesResponse = await axiosInstance.get('/employees');
-      setEmployees(employeesResponse.data);
-    };
-
     fetchTasks();
     fetchEmployees();
   }, []);
 
-  const handleAssignTask = async () => {
-    if (selectedTask && selectedEmployee) {
-      await axios.post('/assign-task', {
-        taskId: selectedTask.id,
-        employeeName: selectedEmployee,
-      });
+  const handleAssignTask =async (taskId) => {
+    if (taskId && selectedEmployee) {
+     /* await axiosInstance.post(`tasks/update/${selectedTask.id}`, {
+        assignee: selectedEmployee
+      });*/
+
+    const requestOptions = {
+        method: 'POST',
+        headers: {
+          "accept": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        },
+        credentials: 'include',
+        body: JSON.stringify({ assignee: selectedEmployee })
+    };
+    const response = await fetch(`http://localhost:8080/api/tasks/update/${taskId}`, requestOptions)
+        .then(response => response.json())
+        .then(data => setEmployees(data))
+        .catch(error => console.error(error));
 
       // Refresh tasks after assigning
-      const tasksResponse = await axios.get('/tasks');
-      setTasks(tasksResponse.data);
+      //fetchTasks();
     }
   };
 
   const handleUnassignTask = async (taskId) => {
-    await axios.post(`tasks/update/${taskId}`);
-
+    const requestOptions = {
+      method: 'POST',
+      headers: {
+        "accept": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      },
+      body: JSON.stringify({ assignee: null })
+  };
+  const response = await fetch(`http://localhost:8080/api/tasks/update/${taskId}`, requestOptions)
+      .then(response => response.json())
+      .then(data => setEmployees(data))
+      .catch(error => console.error(error));
     // Refresh tasks after unassigning
-    const tasksResponse = await axios.get('/tasks');
-    setTasks(tasksResponse.data);
+    fetchTasks();
   };
 
   return (
-    <div>
+    <>
       <h2>Task Assignment</h2>
-      <ul>
+      <div>
         {tasks.map((task) => (
-          <li key={task.id}>
-            {task.description} - Assigned to: {task.assignee.name || 'Unassigned'}
-            {task.assignedTo ? (
+          <div key={task.id} className={styles.taskRow}>
+            <section id="description">Titel: {task.description}</section>
+            <section id="dueDate">Due Date: <input id="dueDate" type="date" name="dueDate" defaultValue={task.dueDate} /></section>
+            <section id="assigned">Assigned to: {task.assignee?.name || 'Unassigned'}</section>
+            {task.assignee ? (
               <button onClick={() => handleUnassignTask(task.id)}>Unassign</button>
             ) : (
               <div>
                 <select onChange={(e) => setSelectedEmployee(e.target.value)}>
                   <option value="">Select Employee</option>
                   {employees.map((employee) => (
-                    <option key={employee} value={employee}>
-                      {employee}
+                    <option key={employee.id} value={employee.id}>
+                      {employee.name}
                     </option>
                   ))}
                 </select>
-                <button onClick={handleAssignTask}>Assign</button>
+                <button onClick={handleAssignTask(task.id)}>Assign</button>
               </div>
             )}
-          </li>
+          </div>
         ))}
-      </ul>
-    </div>
+      </div>
+    </>
   );
 };
 
